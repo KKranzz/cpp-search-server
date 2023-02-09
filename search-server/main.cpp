@@ -1,4 +1,222 @@
-// Решите загадку: Сколько чисел от 1 до 1000 содержат как минимум одну цифру 3?
-// Напишите ответ здесь:271
+#include <algorithm>
+#include <iostream>
+#include <set>
+#include <string>
+#include <utility>
+#include <vector>
+#include <map>
+#include <cmath>
 
-// Закомитьте изменения и отправьте их в свой репозиторий.
+using namespace std;
+
+const int MAX_RESULT_DOCUMENT_COUNT = 5;
+
+
+
+
+string ReadLine() {
+    string s;
+    getline(cin, s);
+    return s;
+}
+
+int ReadLineWithNumber() {
+    int result = 0;
+    cin >> result;
+    ReadLine();
+    return result;
+}
+
+vector<string> SplitIntoWords(const string& text) {
+    vector<string> words;
+    string word;
+    for (const char c : text) {
+        if (c == ' ') {
+            if (!word.empty()) {
+                words.push_back(word);
+                word.clear();
+            }
+        }
+        else {
+            word += c;
+        }
+    }
+    if (!word.empty()) {
+        words.push_back(word);
+    }
+
+    return words;
+}
+
+struct Document {
+    int id;
+    double relevance;
+};
+
+
+
+
+class SearchServer {
+public:
+   
+    void SetStopWords(const string& text) {
+        for (const string& word : SplitIntoWords(text)) {
+            stop_words_.insert(word);
+        }
+    }
+   
+
+    void AddDocument(int document_id, const string& document) {
+        const vector<string> words = SplitIntoWordsNoStop(document);
+      //  document_size[document_id] = words.size();
+        for (const string& word : words) // cat cat tag
+        {
+          //  if(!FindRepeat(document_id, word)) // cat {{1, 1}, {2, 3.0000}}
+            word_to_document_freqs_[word].insert({ document_id, +((double)1/words.size()) });
+        }
+        document_count++;
+
+    }
+
+   
+
+
+    vector<Document> FindTopDocuments(const string& raw_query) const {
+        const Query request = ParseQuery(raw_query);
+        auto matched_documents = FindAllDocuments(request);
+
+        sort(matched_documents.begin(), matched_documents.end(),
+            [](const Document& lhs, const Document& rhs) {
+                return lhs.relevance > rhs.relevance;
+            });
+        if (matched_documents.size() > MAX_RESULT_DOCUMENT_COUNT) {
+            matched_documents.resize(MAX_RESULT_DOCUMENT_COUNT);
+        }
+        return matched_documents;
+    }
+
+private:
+    int document_count = 0;
+    //map <int, int> document_size;
+    struct Query
+    {
+        set <string> minus_w;
+        set <string> plus_w;
+    };
+
+    map<string, map<int, double>> word_to_document_freqs_;
+
+    set<string> stop_words_;
+
+    bool IsStopWord(const string& word) const {
+        return stop_words_.count(word) > 0;
+    }
+
+    vector<string> SplitIntoWordsNoStop(const string& text) const {
+        vector<string> words;
+        for (const string& word : SplitIntoWords(text)) { // (!IsStopWord(word) && !IsStopWord(word.substr(1)))
+            if (word[0] == '-' && !IsStopWord(word.substr(1)))
+                words.push_back(word);
+            else if (!IsStopWord(word)) {
+                words.push_back(word);
+            }
+        }
+        return words;
+    }
+
+    Query ParseQuery(const string& text) const {
+        Query request;
+        for (const string& word : SplitIntoWordsNoStop(text)) {
+            if (word[0] == '-')
+                request.minus_w.insert(word.substr(1));
+            else
+                request.plus_w.insert(word);
+        }
+        return request;
+    }
+
+    vector<Document> FindAllDocuments(const Query& query_words) const {
+        vector<Document> matched_documents;
+        map<int, double> document_to_relevance, buff;
+        double idf = 0;
+      //  double temp = 0;
+        for (const string& plsword : query_words.plus_w) // cat, {2, TF}, {3, TF} 
+        {
+           
+            if (word_to_document_freqs_.find(plsword) != word_to_document_freqs_.end()) // word_to_documents_.count(plsword
+            {
+                idf = log((double)document_count / (double)word_to_document_freqs_.at(plsword).size());
+                for (const auto& buff : word_to_document_freqs_.at(plsword)) 
+                {
+                   //swap(temp, document_to_relevance[buff.first]);
+                    
+                   // document_to_relevance[buff.first] = 0;
+                   // temp = buff.second / document_size.at(buff.first) * log((double)document_count /(double)word_to_document_freqs_.at(plsword).size()); // double type needeed
+                    document_to_relevance[buff.first] += buff.second * idf;
+                }
+            }
+        }
+
+        for (const string& minword : query_words.minus_w) 
+        {
+            if (word_to_document_freqs_.find(minword) != word_to_document_freqs_.end())
+            {
+                for (const auto& buff : word_to_document_freqs_.at(minword))
+                {
+                    //if(document_to_relevance.count(buff) > 0)
+                    document_to_relevance.erase(buff.first);
+                }
+            }
+        }
+
+
+
+        for (const auto& document : document_to_relevance) {
+
+            matched_documents.push_back({ document.first, document.second });
+        }
+        return matched_documents;
+    }
+
+    /* static int MatchDocument(const DocumentContent& content, const Query& query_words) {
+         if (query_words.plus_w.empty()) {
+             return 0;
+         }
+         set<string> matched_words;
+         for (const string& word : content.words) {
+             if (query_words.minus_w.count(word) != 0)
+                 return 0;
+             if (matched_words.count(word) != 0) {
+                 continue;
+             }
+             if (query_words.plus_w.count(word) != 0) {
+                 matched_words.insert(word);
+             }
+         }
+         return static_cast<int>(matched_words.size());
+     }
+
+ */
+};
+SearchServer CreateSearchServer() {
+    SearchServer search_server;
+    search_server.SetStopWords(ReadLine());
+
+    const int document_count = ReadLineWithNumber();
+    for (int document_id = 0; document_id < document_count; ++document_id) {
+        search_server.AddDocument(document_id, ReadLine());
+    }
+
+    return search_server;
+}
+
+int main() {
+    const SearchServer search_server = CreateSearchServer();
+
+
+    const string query = ReadLine();
+    for (const auto& [document_id, relevance] : search_server.FindTopDocuments(query)) {
+        cout << "{ document_id = "s << document_id << ", "
+            << "relevance = "s << relevance << " }"s << endl;
+    }
+}

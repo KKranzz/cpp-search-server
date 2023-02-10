@@ -76,7 +76,7 @@ public:
         weight = 1.0 / words.size();
         for (const string& word : words)
         {
-            if(word_to_document_freqs_[word].find(document_id)!= word_to_document_freqs_[word].end())
+            if(word_to_document_freqs_[word].count(document_id) > 0)
                 word_to_document_freqs_[word].at(document_id)+=weight;
             else
             word_to_document_freqs_[word].insert({ document_id, weight}); 
@@ -89,8 +89,8 @@ public:
 
 
 
-    vector<Document> FindTopDocuments(const string& raw_query) const {
-        const Query request = ParseQuery(raw_query);
+    vector<Document> FindTopDocuments(const string& raw_query_) const {
+        const Query request = ParseQuery(raw_query_);
         auto matched_documents = FindAllDocuments(request);
 
         sort(matched_documents.begin(), matched_documents.end(),
@@ -143,9 +143,10 @@ private:
         return request;
     }
 
-    double IdfCalculate(const string& plsword, const int& document_count, const size_t& size)
+    double IdfCalculate( const size_t& size_)
         const {
-        return log(static_cast<double> (document_count) / static_cast<double> (size));
+        
+        return log(static_cast<double> (document_count) / static_cast<double> (size_));
     }
 
 
@@ -157,9 +158,9 @@ private:
         for (const string& plsword : query_words.plus_w)
         {
 
-            if (word_to_document_freqs_.find(plsword) != word_to_document_freqs_.end())
+            if (word_to_document_freqs_.count(plsword) > 0)
             {
-                idf = IdfCalculate(plsword, document_count, word_to_document_freqs_.at(plsword).size());
+                idf = IdfCalculate( word_to_document_freqs_.at(plsword).size());
                 for (const auto& buff : word_to_document_freqs_.at(plsword))
                 {
 
@@ -170,7 +171,7 @@ private:
 
         for (const string& minword : query_words.minus_w)
         {
-            if (word_to_document_freqs_.find(minword) != word_to_document_freqs_.end())
+            if (word_to_document_freqs_.count(minword) > 0)
             {
                 for (const auto& buff : word_to_document_freqs_.at(minword))
                 {

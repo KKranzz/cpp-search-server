@@ -70,13 +70,17 @@ public:
 
     void AddDocument(int document_id, const string& document) {
         const vector<string> words = SplitIntoWordsNoStop(document);
-     
-        double weight = 0;
-        for (const string& word : words) 
-        {
-            weight =  static_cast <double> (1) / static_cast<double> (words.size());
+
+      double weight = 0;
         
-            word_to_document_freqs_[word].insert({ document_id, +weight });
+        weight = 1.0 / words.size();
+        for (const string& word : words)
+        {
+            if(word_to_document_freqs_[word].find(document_id)!= word_to_document_freqs_[word].end())
+                word_to_document_freqs_[word].at(document_id)+=weight;
+            else
+            word_to_document_freqs_[word].insert({ document_id, weight}); 
+            
         }
         document_count++;
 
@@ -100,8 +104,8 @@ public:
     }
 
 private:
-      int document_count = 0;
-  
+    int document_count = 0;
+
     struct Query
     {
         set <string> minus_w;
@@ -118,7 +122,7 @@ private:
 
     vector<string> SplitIntoWordsNoStop(const string& text) const {
         vector<string> words;
-        for (const string& word : SplitIntoWords(text)) { 
+        for (const string& word : SplitIntoWords(text)) {
             if (word[0] == '-' && !IsStopWord(word.substr(1)))
                 words.push_back(word);
             else if (!IsStopWord(word)) {
@@ -139,9 +143,9 @@ private:
         return request;
     }
 
-     double IdfCalculate(const string& plsword, const int& document_count, const size_t& size)
-        const  {
-       return log( static_cast<double> (document_count) / static_cast<double> (size));
+    double IdfCalculate(const string& plsword, const int& document_count, const size_t& size)
+        const {
+        return log(static_cast<double> (document_count) / static_cast<double> (size));
     }
 
 
@@ -149,16 +153,16 @@ private:
         vector<Document> matched_documents;
         map<int, double> document_to_relevance, buff;
         double idf = 0;
-      // log((double)document_count / (double)word_to_document_freqs_.at(plsword).size());
-        for (const string& plsword : query_words.plus_w) 
+        // log((double)document_count / (double)word_to_document_freqs_.at(plsword).size());
+        for (const string& plsword : query_words.plus_w)
         {
 
-            if (word_to_document_freqs_.find(plsword) != word_to_document_freqs_.end()) 
+            if (word_to_document_freqs_.find(plsword) != word_to_document_freqs_.end())
             {
                 idf = IdfCalculate(plsword, document_count, word_to_document_freqs_.at(plsword).size());
                 for (const auto& buff : word_to_document_freqs_.at(plsword))
                 {
-                   
+
                     document_to_relevance[buff.first] += buff.second * idf;
                 }
             }
@@ -170,7 +174,7 @@ private:
             {
                 for (const auto& buff : word_to_document_freqs_.at(minword))
                 {
-                  
+
                     document_to_relevance.erase(buff.first);
                 }
             }
@@ -185,7 +189,7 @@ private:
         return matched_documents;
     }
 
-   
+
 };
 SearchServer CreateSearchServer() {
     SearchServer search_server;

@@ -220,7 +220,7 @@ private:
     template<typename Func>
     vector<Document> FindAllDocuments(const Query& query, Func function)
         const {
-       DocumentData _buffdoc;
+   
         map<int, double> document_to_relevance;
         for (const string& word : query.plus_words) {
             if (word_to_document_freqs_.count(word) == 0) {
@@ -228,8 +228,8 @@ private:
             }
             const double inverse_document_freq = ComputeWordInverseDocumentFreq(word);
             for (const auto [document_id, term_freq] : word_to_document_freqs_.at(word)) {
-                _buffdoc = documents_.at(document_id);
-                if (function(document_id, _buffdoc.status, _buffdoc.rating)) { // fix3
+              const auto&  buffdoc = documents_.at(document_id); // fix
+                if (function(document_id, buffdoc.status, buffdoc.rating)) { 
                     document_to_relevance[document_id] += term_freq * inverse_document_freq;
                 }
             }

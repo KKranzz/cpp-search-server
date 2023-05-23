@@ -364,7 +364,7 @@ void AssertEqualImpl(const T& t, const U& u, const string& t_str, const string& 
         cout << boolalpha;
         cout << file << "("s << line << "): "s << func << ": "s;
         cout << "ASSERT_EQUAL("s << t_str << ", "s << u_str << ") failed: "s;
-        cout << t  << " != "s << u << "."s;
+        cout << t << " != "s << u << "."s;
         if (!hint.empty()) {
             cout << " Hint: "s << hint;
         }
@@ -422,7 +422,7 @@ void TestExcludeStopWordsFromAddedDocumentContent() {
 }
 
 
-void TestAddDocum()
+void TestAddDocument()
 {
     const int doc_id = 43;
     const string content = "dog in the tower"s;
@@ -432,11 +432,33 @@ void TestAddDocum()
         SearchServer server;
         server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
         vector <Document> docs = server.FindTopDocuments("dog"s);
+        ASSERT_EQUAL(docs.size(), 1);
+        server.AddDocument(doc_id + 1, content + "cat"s, DocumentStatus::ACTUAL, ratings);
+        server.AddDocument(doc_id + 5, content + "cats"s, DocumentStatus::ACTUAL, ratings);
+        server.AddDocument(doc_id + 4, content + "mise"s, DocumentStatus::ACTUAL, ratings);
+        server.AddDocument(doc_id + 2, content + "coat"s, DocumentStatus::ACTUAL, ratings);
+        docs = server.FindTopDocuments("dog"s);
+        ASSERT_EQUAL(docs.size(), 5);
+    }
+
+
+}
+
+
+void TestWorkDocumentStatus() 
+{
+    const int doc_id = 43;
+    const string content = "dog in the tower"s;
+    const vector<int> ratings = { 1, 2, 3 };
+
+    {
+        SearchServer server;
+        server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
         server.AddDocument(doc_id + 1, content + "cat"s, DocumentStatus::IRRELEVANT, ratings);
         server.AddDocument(doc_id + 5, content + "cats"s, DocumentStatus::IRRELEVANT, ratings);
         server.AddDocument(doc_id + 4, content + "mise"s, DocumentStatus::BANNED, ratings);
         server.AddDocument(doc_id + 2, content + "coat"s, DocumentStatus::REMOVED, ratings);
-        docs = server.FindTopDocuments("dog"s);
+        vector <Document> docs = server.FindTopDocuments("dog"s);
         ASSERT_EQUAL(docs.size(), 1);
         docs = server.FindTopDocuments("in"s, DocumentStatus::IRRELEVANT);
         ASSERT_EQUAL(docs.size(), 2);
@@ -451,20 +473,23 @@ void TestAddDocum()
 
 }
 
-void TestMinusW()
+
+void TestMinusWordWork()
 {
 
     const int doc_id = 43;
-    const string content = "dog in the tower"s;
+    string content = "dog in the tower"s;
     const vector<int> ratings = { 1, 2, 3 };
 
     {
         SearchServer server;
         server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
+        content = "cat in the tower"s;
+        server.AddDocument(doc_id+1, content, DocumentStatus::ACTUAL, ratings);
         vector <Document> docs = server.FindTopDocuments("in the"s);
-        ASSERT_EQUAL(docs.size(), 1);
+        ASSERT_EQUAL(docs.size(), 2);
         docs = server.FindTopDocuments("-dog in the"s);
-        ASSERT(docs.empty());
+        ASSERT_EQUAL(docs.size(), 1);
 
 
     }
@@ -483,10 +508,11 @@ void TestMatching()
         SearchServer server;
         server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
         tuple<vector<string>, DocumentStatus> res = server.MatchDocument("dog in at me"s, doc_id);
-        vector <string> buff = get<0>(res);
+        const auto& [documentidentity, status] = res;
+        vector <string> buff = documentidentity;
         ASSERT_EQUAL(buff.size(), 2);
         res = server.MatchDocument("-dog in at me"s, doc_id);
-        buff = get<0>(res);
+        buff = documentidentity;
         ASSERT(buff.empty());
     }
 
@@ -495,7 +521,7 @@ void TestMatching()
 }
 
 
-void TestCalcRev()
+void TestCalcSequenceRelevance()
 {
     const int doc_id = 43;
     const string content1 = "dog in the tower"s;
@@ -506,19 +532,20 @@ void TestCalcRev()
 
 
     {
-        vector <double> v1, v2;
+        
+        double relevance = DBL_MAX;
         SearchServer server;
         server.AddDocument(doc_id, content1, DocumentStatus::ACTUAL, ratings);
         server.AddDocument(doc_id + 1, content2, DocumentStatus::ACTUAL, ratings);
         server.AddDocument(doc_id + 2, content3, DocumentStatus::ACTUAL, ratings);
         vector <Document> res = server.FindTopDocuments("dog in at big"s);
-        for (const auto& doc : res)
-            v1.push_back(doc.relevance);
-
-        v2 = v1;
-        sort(v1.begin(), v1.end());
-        reverse(v1.begin(), v1.end());
-        ASSERT_EQUAL(v2, v1);
+      
+        
+        for (const auto& doc : res) {
+            ASSERT(doc.relevance < relevance);
+            relevance = doc.relevance;
+        }
+        
 
     }
 
@@ -545,7 +572,7 @@ void TestRating()
 
 }
 
-void TestFuncPred()
+void TestFuncPredicat()
 {
     const int doc_id = 43;
     const string content1 = "dog in the tower"s;
@@ -569,19 +596,44 @@ void TestFuncPred()
 
 }
 
+void TestCalculateTFIDF() 
+{
+    const int doc_id = 43;
+    const string content1 = "dog in the tower"s;
+    const string content2 = "dog in at the tower"s;
+    const string content3 = "dog in at big the tower"s;
+    const vector<int> ratings = { 1, 2, 3 };
+    
+    {
+       
+        double relevance = DBL_MAX;
+        SearchServer server;
+        server.AddDocument(doc_id, content1, DocumentStatus::ACTUAL, ratings);
+        server.AddDocument(doc_id + 1, content2, DocumentStatus::ACTUAL, ratings);
+        server.AddDocument(doc_id + 2, content3, DocumentStatus::ACTUAL, ratings);
+        vector <Document> res = server.FindTopDocuments("dog in at big"s);
+        
+       ASSERT(res[0].relevance == 0.25067956612937903);
+       ASSERT(res[1].relevance == 0.081093021621632885);
+       ASSERT(res[2].relevance == 0);
 
+
+    }
+
+}
 
 
 // Функция TestSearchServer является точкой входа для запуска тестов
 void TestSearchServer() {
     RUN_TEST(TestExcludeStopWordsFromAddedDocumentContent);
-    RUN_TEST(TestAddDocum);
-    RUN_TEST(TestMinusW);
+    RUN_TEST(TestAddDocument);
+    RUN_TEST(TestMinusWordWork);
     RUN_TEST(TestMatching);
-    RUN_TEST(TestCalcRev);
+    RUN_TEST(TestCalcSequenceRelevance);
     RUN_TEST(TestRating);
-    RUN_TEST(TestFuncPred);
-
+    RUN_TEST(TestFuncPredicat);
+    RUN_TEST(TestWorkDocumentStatus);
+    RUN_TEST(TestCalculateTFIDF);
 }
 
 // --------- Окончание модульных тестов поисковой системы -----------

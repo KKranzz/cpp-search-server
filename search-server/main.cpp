@@ -488,9 +488,13 @@ void TestMinusWordWork()
         server.AddDocument(doc_id+1, content, DocumentStatus::ACTUAL, ratings);
         vector <Document> docs = server.FindTopDocuments("in the"s);
         ASSERT_EQUAL(docs.size(), 2);
+        ASSERT(docs[0].id == doc_id);
+        ASSERT(docs[1].id == doc_id + 1);
         docs = server.FindTopDocuments("-dog in the"s);
         ASSERT_EQUAL(docs.size(), 1);
-
+        
+        ASSERT(docs[0].id == doc_id+1);
+        
 
     }
 
@@ -613,11 +617,22 @@ void TestCalculateTFIDF()
         server.AddDocument(doc_id + 2, content3, DocumentStatus::ACTUAL, ratings);
         vector <Document> res = server.FindTopDocuments("dog in at big"s);
         
-       ASSERT(res[0].relevance == 0.25067956612937903);
-       ASSERT(res[1].relevance == 0.081093021621632885);
-       ASSERT(res[2].relevance == 0);
+        double rel1 = log(server.GetDocumentCount() * 1.0 / 3) * (1.0 / 4) +
+            log(server.GetDocumentCount() * 1.0 / 3) * (1.0 / 4);
+        double rel2 = log(server.GetDocumentCount() * 1.0 / 3) * (1.0 / 5) +
+            log(server.GetDocumentCount() * 1.0 / 3) * (1.0 / 5)+
+            log(server.GetDocumentCount() * 1.0 / 2) * (1.0 / 5);
 
+        double rel3 = log(server.GetDocumentCount() * 1.0 / 3) * (1.0 / 6) +
+            log(server.GetDocumentCount() * 1.0 / 3) * (1.0 / 6) +
+            log(server.GetDocumentCount() * 1.0 / 2) * (1.0 / 6) +
+            log(server.GetDocumentCount() * 1.0 / 1) * (1.0 / 6);
 
+      ASSERT(res[0].relevance == rel3);
+      ASSERT(res[1].relevance == rel2);
+      ASSERT(res[2].relevance == rel1);
+
+    
     }
 
 }

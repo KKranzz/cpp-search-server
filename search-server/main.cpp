@@ -1,14 +1,6 @@
 /* решение задачи "Выводим результаты поиска страницами" из темы "Итераторы" */
-#include <algorithm>
-#include <cmath>
+
 #include <iostream>
-#include <map>
-#include <set>
-#include <stdexcept>
-#include <string>
-#include <utility>
-#include <vector>
-#include <deque>
 #include "document.h"
 #include "paginator.h"
 #include "read_input_functions.h"
@@ -18,15 +10,10 @@
 using namespace std;
 
 
-
-
-
-
 template <typename Container>
 auto Paginate(const Container& c, size_t page_size) {
     return Paginator(begin(c), end(c), page_size);
 }
-
 
 
 int main() {

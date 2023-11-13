@@ -1,27 +1,37 @@
-#include "read_input_functions.h"
-#include "document.h"
+#include "request_queue.h"
 
-   std::string ReadLine() {
-        std::string s;
-        std::getline(std::cin, s);
-        return s;
-    }
 
-    int ReadLineWithNumber() {
-        int result;
-        std::cin >> result;
-        ReadLine();
-        return result;
-    }
-
-    std::ostream& operator << (std::ostream& ost, const Document& doc)
+vector<Document> RequestQueue::AddFindRequest(const string& raw_query, DocumentStatus status) {
+    // напишите реализацию
+    auto search_result = server_.FindTopDocuments(raw_query, status);
+    if (!search_result.empty())
     {
-        return ost << "{ document_id = " << doc.id
-            << ", relevance = " << doc.relevance
-            << ", rating = " << doc.rating << " }";
-
-        return ost;
+        requests_.push_back({ false });
     }
+    else requests_.push_back({ true });
+    if (requests_.size() > min_in_day_)
+        requests_.pop_front();
+    return search_result;
+}
+std::vector<Document>  RequestQueue::AddFindRequest(const string& raw_query) {
+    // напишите реализацию
+    auto search_result = server_.FindTopDocuments(raw_query);
+    if (!search_result.empty())
+    {
+        requests_.push_back({ false });
+    }
+    else requests_.push_back({ true });
+    if (requests_.size() > min_in_day_)
+        requests_.pop_front();
+    return search_result;
+}
+int  RequestQueue::GetNoResultRequests() const {
+    // напишите реализацию
+    return count_if(requests_.begin(), requests_.end(), [](auto& request)
+        {
+            if (request.empty)
+                return true;
 
-    
-    
+            return false;
+     });
+}

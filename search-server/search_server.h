@@ -9,25 +9,18 @@
 #include "string_processing.h"
 
 const int MAX_RESULT_DOCUMENT_COUNT = 5;
+const double EPSILON = 1e-6;
 
 using namespace std;
 
 class SearchServer {
 public:
     template <typename StringContainer>
-    explicit SearchServer(const StringContainer& stop_words)
-        : stop_words_(MakeUniqueNonEmptyStrings(stop_words))  // Extract non-empty stop words
-    {
-        if (!all_of(stop_words_.begin(), stop_words_.end(), IsValidWord)) {
-            throw invalid_argument("Some of stop words are invalid"s);
-        }
-    }
+    explicit SearchServer(const StringContainer& stop_words);
+        
 
-    explicit SearchServer(const string& stop_words_text)
-        : SearchServer(
-            SplitIntoWords(stop_words_text))  // Invoke delegating constructor from string container
-    {
-    }
+    explicit SearchServer(const string& stop_words_text);
+        
 
     void AddDocument(int document_id, const string& document, DocumentStatus status,
         const vector<int>& ratings);
@@ -100,12 +93,12 @@ vector<Document> SearchServer::FindTopDocuments(const string& raw_query,
 
     sort(matched_documents.begin(), matched_documents.end(),
         [](const Document& lhs, const Document& rhs) {
-            if (abs(lhs.relevance - rhs.relevance) < 1e-6) {
+            if (abs(lhs.relevance - rhs.relevance) < EPSILON) {
                 return lhs.rating > rhs.rating;
             }
-            else {
-                return lhs.relevance > rhs.relevance;
-            }
+            
+               return lhs.relevance > rhs.relevance;
+            
         });
     if (matched_documents.size() > MAX_RESULT_DOCUMENT_COUNT) {
         matched_documents.resize(MAX_RESULT_DOCUMENT_COUNT);
@@ -149,3 +142,20 @@ vector<Document> SearchServer::FindAllDocuments(const Query& query,
     }
     return matched_documents;
 }
+
+
+template <typename StringContainer>
+ SearchServer::SearchServer(const StringContainer& stop_words)
+    : stop_words_(MakeUniqueNonEmptyStrings(stop_words))  // Extract non-empty stop words
+{
+    if (!all_of(stop_words_.begin(), stop_words_.end(), IsValidWord)) {
+        throw invalid_argument("Some of stop words are invalid"s);
+    }
+}
+
+
+ SearchServer::SearchServer(const string& stop_words_text)
+     : SearchServer(
+         SplitIntoWords(stop_words_text))  // Invoke delegating constructor from string container
+ {
+ }

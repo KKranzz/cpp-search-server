@@ -17,10 +17,11 @@ class SearchServer {
 public:
     template <typename StringContainer>
     explicit SearchServer(const StringContainer& stop_words);
-        
 
-    explicit SearchServer(const string& stop_words_text);
-        
+
+    explicit SearchServer(const string& stop_words_text) : SearchServer(
+        SplitIntoWords(stop_words_text)) {};
+
 
     void AddDocument(int document_id, const string& document, DocumentStatus status,
         const vector<int>& ratings);
@@ -51,7 +52,7 @@ private:
     vector<int> document_ids_;
 
     bool IsStopWord(const string& word) const;
-    
+
 
     static bool IsValidWord(const string& word);
 
@@ -96,9 +97,9 @@ vector<Document> SearchServer::FindTopDocuments(const string& raw_query,
             if (abs(lhs.relevance - rhs.relevance) < EPSILON) {
                 return lhs.rating > rhs.rating;
             }
-            
-               return lhs.relevance > rhs.relevance;
-            
+
+            return lhs.relevance > rhs.relevance;
+
         });
     if (matched_documents.size() > MAX_RESULT_DOCUMENT_COUNT) {
         matched_documents.resize(MAX_RESULT_DOCUMENT_COUNT);
@@ -145,7 +146,7 @@ vector<Document> SearchServer::FindAllDocuments(const Query& query,
 
 
 template <typename StringContainer>
- SearchServer::SearchServer(const StringContainer& stop_words)
+SearchServer::SearchServer(const StringContainer& stop_words)
     : stop_words_(MakeUniqueNonEmptyStrings(stop_words))  // Extract non-empty stop words
 {
     if (!all_of(stop_words_.begin(), stop_words_.end(), IsValidWord)) {
@@ -154,8 +155,4 @@ template <typename StringContainer>
 }
 
 
- SearchServer::SearchServer(const string& stop_words_text)
-     : SearchServer(
-         SplitIntoWords(stop_words_text))  // Invoke delegating constructor from string container
- {
- }
+
